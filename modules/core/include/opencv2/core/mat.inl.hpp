@@ -42,8 +42,8 @@
 //
 //M*/
 
-#ifndef __OPENCV_CORE_MATRIX_OPERATIONS_HPP__
-#define __OPENCV_CORE_MATRIX_OPERATIONS_HPP__
+#ifndef OPENCV_CORE_MATRIX_OPERATIONS_HPP
+#define OPENCV_CORE_MATRIX_OPERATIONS_HPP
 
 #ifndef __cplusplus
 #  error mat.inl.hpp header must be compiled as C++
@@ -680,7 +680,8 @@ void Mat::addref()
         CV_XADD(&u->refcount, 1);
 }
 
-inline void Mat::release()
+inline
+void Mat::release()
 {
     if( u && CV_XADD(&u->refcount, -1) == 1 )
         deallocate();
@@ -688,6 +689,16 @@ inline void Mat::release()
     datastart = dataend = datalimit = data = 0;
     for(int i = 0; i < dims; i++)
         size.p[i] = 0;
+#ifdef _DEBUG
+    flags = MAGIC_VAL;
+    dims = rows = cols = 0;
+    if(step.p != step.buf)
+    {
+        fastFree(step.p);
+        step.p = step.buf;
+        size.p = &rows;
+    }
+#endif
 }
 
 inline

@@ -1135,6 +1135,9 @@ int CvCapture_FFMPEG::get_bitrate() const
 
 double CvCapture_FFMPEG::get_fps() const
 {
+#if 0 && LIBAVFORMAT_BUILD >= CALC_FFMPEG_VERSION(55, 1, 100) && LIBAVFORMAT_VERSION_MICRO >= 100
+    double fps = r2d(av_guess_frame_rate(ic, ic->streams[video_stream], NULL));
+#else
 #if LIBAVCODEC_BUILD >= CALC_FFMPEG_VERSION(54, 1, 0)
     double fps = r2d(ic->streams[video_stream]->avg_frame_rate);
 #else
@@ -1152,7 +1155,7 @@ double CvCapture_FFMPEG::get_fps() const
     {
         fps = 1.0 / r2d(ic->streams[video_stream]->codec->time_base);
     }
-
+#endif
     return fps;
 }
 
@@ -1577,6 +1580,10 @@ static AVStream *icv_add_video_stream_FFMPEG(AVFormatContext *oc,
     {
         c->flags |= CODEC_FLAG_GLOBAL_HEADER;
     }
+#endif
+
+#if LIBAVCODEC_BUILD >= CALC_FFMPEG_VERSION(52, 42, 0)
+    st->avg_frame_rate = (AVRational){frame_rate, frame_rate_base};
 #endif
 
     return st;
@@ -2448,11 +2455,14 @@ bool OutputMediaStream_FFMPEG::open(const char* fileName, int width, int height,
     }
 
     // write the stream header, if any
+    int header_err =
     #if LIBAVFORMAT_BUILD < CALC_FFMPEG_VERSION(53, 2, 0)
         av_write_header(oc_);
     #else
         avformat_write_header(oc_, NULL);
     #endif
+    if (header_err != 0)
+        return false;
 
     return true;
 }
